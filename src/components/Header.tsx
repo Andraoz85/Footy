@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Header() {
   return (
     <header className="bg-white shadow">
@@ -10,24 +12,24 @@ export default function Header() {
             </div>
             {/* Navigation Links */}
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              <a
+              <Link
                 href="/"
                 className="border-transparent text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
               >
                 Fixtures
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/tables"
                 className="border-transparent text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
               >
                 Tables
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/players"
                 className="border-transparent text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
               >
                 Players
-              </a>
+              </Link>
             </div>
           </div>
         </div>
