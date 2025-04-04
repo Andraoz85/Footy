@@ -1,18 +1,21 @@
-import Header from "@/components/Header";
+import Header from "@/components/layout/Header";
+import Footer from "@/components/layout/Footer";
+import Sidebar from "@/components/layout/Sidebar";
+import Main from "@/components/layout/Main";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="flex flex-col min-h-screen bg-gray-100">
+      {/* Header - logo, naviation, search bar */}
       <Header />
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <div className="border-4 border-gray-200 rounded-lg h-96 flex items-center justify-center">
-            <p className="text-gray-500">
-              Welcome to Footy - Your Football Hub
-            </p>
-          </div>
-        </div>
-      </main>
+      <div className="flex-grow flex flex-col md:flex-row max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 gap-6">
+        {/* Sidofält - Ligor */}
+        <Sidebar />
+        {/* Huvudinnehåll - kommande matcher/tabeller */}
+        <Main />
+      </div>
+      {/* Footer - kontakt/ social media/ copyright */}
+      <Footer />
     </div>
   );
 }
