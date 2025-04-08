@@ -1,11 +1,17 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Match } from "@/lib/api/types";
-import { getUpcomingMatches } from "@/lib/api/football";
+import { getUpcomingMatches, LEAGUES, LeagueId } from "@/lib/api/football";
 import FixturesList from "@/components/FixturesList";
 
+interface LeagueMatches {
+  leagueId: LeagueId;
+  leagueName: string;
+  matches: Match[];
+}
+
 export default function Main() {
-  const [matches, setMatches] = useState<Match[]>([]);
+  const [leagueMatches, setLeagueMatches] = useState<LeagueMatches[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -14,10 +20,24 @@ export default function Main() {
       try {
         setIsLoading(true);
         const data = await getUpcomingMatches();
-        if (data.matches.length === 0) {
+
+        const matchesByLeague: LeagueMatches[] = [];
+
+        // Konvertera API-svaret till vår LeagueMatches-struktur
+        Object.entries(data).forEach(([leagueId, response]) => {
+          if (response && response.matches.length > 0) {
+            matchesByLeague.push({
+              leagueId: leagueId as LeagueId,
+              leagueName: LEAGUES[leagueId as LeagueId].name,
+              matches: response.matches,
+            });
+          }
+        });
+
+        if (matchesByLeague.length === 0) {
           setError("No upcoming matches found");
         } else {
-          setMatches(data.matches);
+          setLeagueMatches(matchesByLeague);
           setError(null);
         }
       } catch (err) {
@@ -41,7 +61,19 @@ export default function Main() {
           {error ? (
             <p className="text-red-500">Error: {error}</p>
           ) : (
-            <FixturesList matches={matches} isLoading={isLoading} />
+            <div className="space-y-6">
+              {leagueMatches.map((league) => (
+                <div key={league.leagueId}>
+                  <h3 className="text-white text-sm sm:text-base font-medium mb-2">
+                    {league.leagueName}
+                  </h3>
+                  <FixturesList
+                    matches={league.matches}
+                    isLoading={isLoading}
+                  />
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
