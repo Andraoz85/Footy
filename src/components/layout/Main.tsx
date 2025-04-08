@@ -57,7 +57,7 @@ export default function Main() {
         <h2 className="text-lg sm:text-xl font-semibold text-white mb-2 sm:mb-4">
           Fixtures
         </h2>
-        <div className="flex-1 border-2 border-gray-200 rounded-lg p-2 sm:p-4 bg-white/5 min-h-[900px] max-h-[600px] overflow-y-auto">
+        <div className="flex-1 border-2 border-gray-200 rounded-lg p-2 sm:p-4 bg-white/5 min-h-[600px] max-h-[600px] overflow-y-auto">
           {error ? (
             <p className="text-red-500">Error: {error}</p>
           ) : (
