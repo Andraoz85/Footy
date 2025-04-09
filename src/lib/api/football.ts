@@ -79,7 +79,7 @@ function saveToCache(data: { [key in LeagueId]?: MatchResponse }) {
       })
     );
   } catch (error) {
-    console.error("Can not save to cache:", error);
+    console.error("Failed to save to cache:", error);
   }
 }
 
@@ -102,7 +102,7 @@ export async function getUpcomingMatches(
   const results: { [key in LeagueId]?: MatchResponse } = {};
 
   try {
-    // Get data for each league one by one
+    // Get data for each league
     for (const leagueId of leagueIds) {
       try {
         const response = await fetchFromApi<MatchResponse>(
@@ -113,11 +113,11 @@ export async function getUpcomingMatches(
         }
       } catch (error) {
         console.error(
-          `Can not get matches for ${LEAGUES[leagueId].name}:`,
+          `Failed get matches for ${LEAGUES[leagueId].name}:`,
           error
         );
       }
-      // Wait a bit between each call to avoid rate limiting
+      // Wait between each call to avoid rate limiting
       await new Promise((resolve) => setTimeout(resolve, 200));
     }
 
