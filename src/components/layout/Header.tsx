@@ -8,7 +8,14 @@ export default function Header() {
           <div className="flex">
             {/* Logo/Brand? */}
             <div className="flex items-center">
-              <h1 className="text-xl font-bold">Footy</h1>
+              <Link href="/">
+                <img
+                  src="/footylogo.png"
+                  alt="Footy"
+                  width={120}
+                  height={120}
+                />
+              </Link>
             </div>
             {/* Navigation Links */}
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
