@@ -113,7 +113,7 @@ export async function getUpcomingMatches(
         }
       } catch (error) {
         console.error(
-          `Failed get matches for ${LEAGUES[leagueId].name}:`,
+          `Failed to fetch matches for ${LEAGUES[leagueId].name}:`,
           error
         );
       }
