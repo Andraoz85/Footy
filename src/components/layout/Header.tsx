@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { MobileMenu } from "@/components/MobileMenu";
 import { NAVIGATION } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { SearchInput } from "@/components/SearchInput";
 
 export default function Header() {
   const pathname = usePathname();
@@ -14,9 +15,12 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo/Brand */}
-          <Link href="/">
+          <Link className="flex-shrink-0" href="/">
             <img src="/footylogo.png" alt="Footy" width={120} height={120} />
           </Link>
+
+          {/* Search */}
+          <SearchInput />
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex md:items-center md:space-x-8">
