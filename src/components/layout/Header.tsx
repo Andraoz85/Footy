@@ -1,37 +1,47 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { MobileMenu } from "@/components/MobileMenu";
+import { NAVIGATION } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+import { SearchInput } from "@/components/SearchInput";
 
 export default function Header() {
+  const pathname = usePathname();
+
   return (
     <header className="bg-white shadow">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex">
-            {/* Logo/Brand? */}
-            <div className="flex items-center">
-              <h1 className="text-xl font-bold">Footy</h1>
-            </div>
-            {/* Navigation Links */}
-            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+        <div className="flex justify-between items-center h-16">
+          {/* Logo/Brand */}
+          <Link className="flex-shrink-0" href="/">
+            <img src="/footylogo.png" alt="Footy" width={120} height={120} />
+          </Link>
+
+          {/* Search */}
+          <SearchInput />
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex md:items-center md:space-x-8">
+            {NAVIGATION.map((item) => (
               <Link
-                href="/"
-                className="border-transparent text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors",
+                  pathname === item.href
+                    ? "border-green-600 text-gray-900"
+                    : "border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300"
+                )}
               >
-                Fixtures
+                {item.name}
               </Link>
-              <Link
-                href="/tables"
-                className="border-transparent text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-              >
-                Tables
-              </Link>
-              <Link
-                href="/players"
-                className="border-transparent text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-              >
-                Players
-              </Link>
-            </div>
+            ))}
           </div>
+
+          {/* Mobile Menu */}
+          <MobileMenu />
         </div>
       </div>
     </header>
