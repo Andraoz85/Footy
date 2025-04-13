@@ -1,4 +1,5 @@
 import { Match } from "@/lib/api/types";
+import { Skeleton } from "./ui/skeleton";
 
 interface FixturesListProps {
   matches: Match[];
@@ -11,16 +12,7 @@ export default function FixturesList({
 }: FixturesListProps) {
   if (isLoading) {
     return (
-      <div className="space-y-2 sm:space-y-3">
-        {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="bg-white/80 backdrop-blur-sm rounded-lg shadow p-3 sm:p-4 animate-pulse"
-          >
-            <div className="h-12 sm:h-16 bg-gray-200 rounded"></div>
-          </div>
-        ))}
-      </div>
+      <Skeleton className="h-12 sm:h-16" />
     );
   }
 
