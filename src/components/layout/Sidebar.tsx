@@ -1,6 +1,6 @@
 "use client";
 
-import { LEAGUES, LeagueId } from "@/lib/api/football";
+import { LEAGUES, LeagueId } from "@/lib/api/leagues";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import Image from "next/image";

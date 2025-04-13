@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Match } from "@/lib/api/types";
-import { getUpcomingMatches, LEAGUES, LeagueId } from "@/lib/api/football";
+import { getUpcomingMatches } from "@/lib/api/football";
+import { LeagueId, LEAGUES } from "@/lib/api/leagues";
 import FixturesList from "@/components/FixturesList";
 
 interface LeagueMatches {
@@ -23,7 +24,6 @@ export default function Main() {
 
         const matchesByLeague: LeagueMatches[] = [];
 
-        // Konvertera API-svaret till vår LeagueMatches-struktur
         Object.entries(data).forEach(([leagueId, response]) => {
           if (response && response.matches.length > 0) {
             matchesByLeague.push({
@@ -44,7 +44,9 @@ export default function Main() {
         console.error("Error fetching matches:", err);
         setError(err instanceof Error ? err.message : "Failed to load matches");
       } finally {
-        setIsLoading(false);
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 500); // ½ second delay
       }
     }
 
