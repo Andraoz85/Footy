@@ -44,10 +44,11 @@ export default function Main() {
         console.error("Error fetching matches:", err);
         setError(err instanceof Error ? err.message : "Failed to load matches");
       } finally {
+        // Introduce a delay for visual effect (e.g., smooth UI transitions).
+        const DELAY_MS = 500; // Configurable delay duration in milliseconds.
         setTimeout(() => {
           setIsLoading(false);
-        }, 500); // ½ second delay
-      }
+        }, DELAY_MS);
     }
 
     fetchMatches();
