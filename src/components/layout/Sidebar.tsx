@@ -2,12 +2,11 @@
 
 import { LEAGUES, LeagueId } from "@/lib/api/leagues";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
 import Image from "next/image";
-
+import { useLeague } from "@/lib/context/LeagueContext";
 
 export default function Sidebar() {
-  const [selectedLeague, setSelectedLeague] = useState<LeagueId | null>(null);
+  const { selectedLeague, setSelectedLeague } = useLeague();
 
   return (
     <aside className="w-full md:w-64 bg-white shadow rounded-lg p-4 mb-6 md:mb-0 min-h-[400px] max-h-[600px] overflow-y-auto">
@@ -16,7 +15,9 @@ export default function Sidebar() {
         {Object.entries(LEAGUES).map(([id, league]) => (
           <button
             key={id}
-            onClick={() => setSelectedLeague(id as LeagueId)}
+            onClick={() =>
+              setSelectedLeague(selectedLeague === id ? null : (id as LeagueId))
+            }
             className={cn(
               "w-full flex items-center px-3 py-2 text-sm rounded-md transition-colors",
               "hover:bg-gray-100",
