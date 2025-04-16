@@ -6,7 +6,7 @@ const CACHE_TIME = 5 * 60 * 1000; // 5 minutes
 
 async function fetchFromApi<T>(endpoint: string): Promise<T> {
   try {
-    const url = `/api/football?endpoint=${encodeURIComponent(endpoint)}`;
+    const url = `/api/football/fixtures?endpoint=${encodeURIComponent(endpoint)}`;
     const response = await fetch(url);
     const data = await response.json();
 
