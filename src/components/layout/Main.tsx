@@ -58,6 +58,22 @@ export default function Main() {
     ? leagueMatches.filter((league) => league.leagueId === selectedLeague)
     : leagueMatches;
 
+  const showEmptyState =
+    error !== null ||
+    (selectedLeague && filteredMatches.length === 0 && !isLoading) ||
+    (filteredMatches.length === 0 && !isLoading);
+
+  // Determine the message to show when no data is available
+  const getEmptyStateMessage = () => {
+    if (error) {
+      return error;
+    } else if (selectedLeague) {
+      return `No upcoming matches found for ${LEAGUES[selectedLeague].name}.`;
+    } else {
+      return "No upcoming matches found for any league.";
+    }
+  };
+
   return (
     <main className="flex-1 bg-green-800 shadow rounded-lg flex flex-col">
       <div className="px-2 py-3 sm:px-4 sm:py-5 flex flex-col h-full">
@@ -65,8 +81,21 @@ export default function Main() {
           {selectedLeague ? LEAGUES[selectedLeague].name : "All Fixtures"}
         </h2>
         <div className="flex-1 border-2 border-gray-200 rounded-lg p-2 sm:p-4 bg-white/5 min-h-[600px] max-h-[600px] overflow-y-auto">
-          {error ? (
-            <p className="text-red-500">Error: {error}</p>
+          {showEmptyState ? (
+            <div className="bg-white/80 p-4 rounded-lg text-gray-800">
+              <p className="text-red-600 font-semibold mb-2">
+                Data Unavailable
+              </p>
+              <p className="mb-3">{getEmptyStateMessage()}</p>
+              <div className="text-sm text-gray-600 mb-3">
+                This might be due to:
+                <ul className="list-disc ml-5 mt-1">
+                  <li>API rate limits reached</li>
+                  <li>No scheduled matches in the next 30 days</li>
+                  <li>Temporary server issues</li>
+                </ul>
+              </div>
+            </div>
           ) : (
             <div className="space-y-6">
               {filteredMatches.map((league) => (
