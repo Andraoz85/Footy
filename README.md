@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<img src="/public/footylogo.png" width="100" height="100">
+
+Footy is a web application for displaying upcoming football matches and standings from various European leagues. The app uses the Football Data API to fetch the latest match data and presents it in a user-friendly interface.
+
+## Features
+
+- **Match Schedule**: View upcoming matches from multiple leagues
+- **League Tables**: See current standings for each league
+- **Filtering**: Filter matches and tables by league
+- **Responsive Design**: Works well on both mobile and desktop
+- **Caching**: Optimized to minimize API calls with local caching
+
+## Technologies
+
+- **Frontend**: Next.js 15, React 19, TypeScript
+- **Styling**: Tailwind CSS 4, shadcn/ui components
+- **API**: Football Data API (https://www.football-data.org/)
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js (version 18 or later)
+- pnpm (recommended package manager) or npm/yarn
+- API key from Football Data API (https://www.football-data.org/client/register)
+
+### Installation
+
+1. Clone the repository:
+      ```bash
+   git clone <repository-url>
+   cd footy
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   pnpm install
+   ```
+
+3. Create a `.env.local` file in the project root and add your API key:
+
+   ```
+   FOOTBALL_API_KEY=your_api_key_here
+   ```
+
+4. Start the development server:
+
+   ```bash
+   pnpm dev
+   ```
+
+5. Open [http://localhost:3000](http://localhost:3000) in your browser to see the result.
+
+## Project Structure
+
+```
+footy/
+├── public/             # Static files (images, icons)
+├── src/
+│   ├── app/            # Next.js App Router
+│   │   ├── api/        # API routes for server handling
+│   │   └── ...
+│   ├── components/     # React components
+│   │   ├── layout/     # Layout components (Header, Footer, etc.)
+│   │   ├── ui/         # Basic UI components (shadcn/ui)
+│   │   └── ...         # Functional components
+│   └── lib/            # Utilities, API integrations, etc.
+│       ├── api/        # API-related code
+│       ├── context/    # React Context providers
+│       └── ...
+└── ...
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## API Usage
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+This app uses the Football Data API, which has certain limitations in the free version:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- 10 calls per minute
+- Limited number of leagues
+- Limited historical data
 
-## Learn More
+The app implements caching to reduce the number of API calls and handle rate limits.
 
-To learn more about Next.js, take a look at the following resources:
+## Customization
+To add or change leagues, edit the `LEAGUES` constant in `src/lib/api/leagues.ts`. <br>
+Go to https://www.football-data.org/coverage to see which leagues are included in each tier.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Contributions
+Contributions are welcome! Open an issue or pull request.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## License
+MIT
