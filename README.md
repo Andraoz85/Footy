@@ -1,4 +1,5 @@
 <img src="/public/footylogo.png" width="100" height="100">
+https://footy-umber.vercel.app/
 
 Footy is a web application for displaying upcoming football matches and standings from various European leagues. The app uses the Football Data API to fetch the latest match data and presents it in a user-friendly interface.
 
@@ -85,6 +86,14 @@ The app implements caching to reduce the number of API calls and handle rate lim
 ## Customization
 To add or change leagues, edit the `LEAGUES` constant in `src/lib/api/leagues.ts`. <br>
 Go to https://www.football-data.org/coverage to see which leagues are included in each tier.
+
+## Deployment
+
+The project is configured for deployment on Vercel. To deploy:
+
+1. Connect your GitHub repo to Vercel
+2. Add FOOTBALL_API_KEY as an environment variable in the Vercel project
+3. Deploy!
 
 ## Contributions
 Contributions are welcome! Open an issue or pull request.
