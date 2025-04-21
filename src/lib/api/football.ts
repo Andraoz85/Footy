@@ -2,11 +2,14 @@ import { MatchResponse, StandingsResponse } from "./types";
 import { LeagueId, LEAGUES } from "./leagues";
 
 const CACHE_KEY = "football_matches_cache";
-const CACHE_TIME = 5 * 60 * 1000; // 5 minutes
+const CACHE_TIME = 60 * 60 * 1000; // 60 minutes
+const DAYS_TO_FETCH = 14;
 
 async function fetchFromApi<T>(endpoint: string): Promise<T> {
   try {
-    const url = `/api/football/fixtures?endpoint=${encodeURIComponent(endpoint)}`;
+    const url = `/api/football/fixtures?endpoint=${encodeURIComponent(
+      endpoint
+    )}`;
     const response = await fetch(url);
     const data = await response.json();
 
@@ -84,7 +87,7 @@ export async function getUpcomingMatches(
   const dateFrom = today.toISOString().split("T")[0];
 
   const dateTo = new Date(today);
-  dateTo.setDate(dateTo.getDate() + 30);
+  dateTo.setDate(dateTo.getDate() + DAYS_TO_FETCH);
   const dateToStr = dateTo.toISOString().split("T")[0];
 
   const results: { [key in LeagueId]?: MatchResponse } = {};
