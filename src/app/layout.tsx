@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { LeagueProvider } from "@/lib/context/LeagueContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Footy - Football Statistics",
-  description:
-    "Track football matches, leagues, and statistics across major European leagues",
+  title: "Footy",
+  description: "Football fixtures and results",
 };
 
 export default function RootLayout({
@@ -17,7 +17,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <LeagueProvider>{children}</LeagueProvider>
+      </body>
     </html>
   );
 }
