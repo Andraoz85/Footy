@@ -1,5 +1,6 @@
 import { Match } from "@/lib/api/types";
 import { Skeleton } from "./ui/skeleton";
+import Image from "next/image";
 
 interface FixturesListProps {
   matches: Match[];
@@ -11,9 +12,7 @@ export default function FixturesList({
   isLoading,
 }: FixturesListProps) {
   if (isLoading) {
-    return (
-      <Skeleton className="h-12 sm:h-16" />
-    );
+    return <Skeleton className="h-12 sm:h-16" />;
   }
 
   return (
@@ -25,11 +24,16 @@ export default function FixturesList({
         >
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-1 sm:gap-2 flex-1">
-              <img
-                src={match.homeTeam.crest}
-                alt={match.homeTeam.shortName}
-                className="w-6 h-6 sm:w-8 sm:h-8 object-contain"
-              />
+              <div className="relative w-6 h-6 sm:w-8 sm:h-8">
+                <Image
+                  src={match.homeTeam.crest}
+                  alt={match.homeTeam.shortName}
+                  fill
+                  sizes="(max-width: 640px) 24px, 32px"
+                  className="object-contain"
+                  priority={false}
+                />
+              </div>
               <span className="font-medium text-sm sm:text-base">
                 {match.homeTeam.shortName}
               </span>
@@ -50,11 +54,16 @@ export default function FixturesList({
               <span className="font-medium text-sm sm:text-base">
                 {match.awayTeam.shortName}
               </span>
-              <img
-                src={match.awayTeam.crest}
-                alt={match.awayTeam.shortName}
-                className="w-6 h-6 sm:w-8 sm:h-8 object-contain"
-              />
+              <div className="relative w-6 h-6 sm:w-8 sm:h-8">
+                <Image
+                  src={match.awayTeam.crest}
+                  alt={match.awayTeam.shortName}
+                  fill
+                  sizes="(max-width: 640px) 24px, 32px"
+                  className="object-contain"
+                  priority={false}
+                />
+              </div>
             </div>
           </div>
         </div>

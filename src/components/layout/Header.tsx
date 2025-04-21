@@ -6,6 +6,7 @@ import { MobileMenu } from "@/components/MobileMenu";
 import { NAVIGATION } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { SearchInput } from "@/components/SearchInput";
+import Image from "next/image";
 
 export default function Header() {
   const pathname = usePathname();
@@ -16,7 +17,13 @@ export default function Header() {
         <div className="flex justify-between items-center h-16">
           {/* Logo/Brand */}
           <Link className="flex-shrink-0" href="/">
-            <img src="/footylogo.png" alt="Footy" width={120} height={120} />
+            <Image
+              src="/footylogo.png"
+              alt="Footy"
+              width={120}
+              height={60}
+              priority
+            />
           </Link>
 
           {/* Search */}

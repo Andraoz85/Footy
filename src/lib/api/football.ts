@@ -50,8 +50,9 @@ function getCachedMatches() {
     }
 
     return data;
-  } catch (error) {
+  } catch (err) {
     // remove cache if error
+    console.error("Error reading from cache:", err);
     localStorage.removeItem(CACHE_KEY);
     return null;
   }
@@ -163,7 +164,8 @@ function getCachedData(key: string): StandingsResponse | null {
       return null;
     }
     return data;
-  } catch (error) {
+  } catch (err) {
+    console.error("Error reading from cache:", err);
     localStorage.removeItem(key);
     return null;
   }
