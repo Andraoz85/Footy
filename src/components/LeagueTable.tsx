@@ -31,20 +31,18 @@ export default function LeagueTable({
           className="bg-white/80 rounded-lg overflow-hidden"
         >
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[500px]">
               <thead>
                 <tr className="bg-gray-100 text-left">
-                  <th className="p-2 sm:p-3 w-10">#</th>
-                  <th className="p-2 sm:p-3">Team</th>
-                  <th className="p-2 sm:p-3 text-center w-10 sm:w-12">P</th>
-                  <th className="p-2 sm:p-3 text-center w-10 sm:w-12">W</th>
-                  <th className="p-2 sm:p-3 text-center w-10 sm:w-12">D</th>
-                  <th className="p-2 sm:p-3 text-center w-10 sm:w-12">L</th>
-                  <th className="p-2 sm:p-3 text-center w-10 sm:w-12">F</th>
-                  <th className="p-2 sm:p-3 text-center w-10 sm:w-12">A</th>
-                  <th className="p-2 sm:p-3 text-center w-10 sm:w-12">GD</th>
-                  <th className="p-2 sm:p-3 text-center w-12 sm:w-16 font-bold">
-                    P
+                  <th className="p-1.5 sm:p-2.5 w-8">#</th>
+                  <th className="p-1.5 sm:p-2.5">Team</th>
+                  <th className="p-1.5 sm:p-2.5 text-center w-8 sm:w-10">P</th>
+                  <th className="p-1.5 sm:p-2.5 text-center w-8 sm:w-10">W</th>
+                  <th className="p-1.5 sm:p-2.5 text-center w-8 sm:w-10">D</th>
+                  <th className="p-1.5 sm:p-2.5 text-center w-8 sm:w-10">L</th>
+                  <th className="p-1.5 sm:p-2.5 text-center w-8 sm:w-10">GD</th>
+                  <th className="p-1.5 sm:p-2.5 text-center w-14 font-bold">
+                    Pts
                   </th>
                 </tr>
               </thead>
@@ -54,41 +52,41 @@ export default function LeagueTable({
                     key={position.team.id}
                     className="border-t border-gray-200 hover:bg-gray-50 transition-colors"
                   >
-                    <td className="p-2 sm:p-3">{position.position}</td>
-                    <td className="p-2 sm:p-3">
+                    <td className="p-1.5 sm:p-2.5">{position.position}</td>
+                    <td className="p-1.5 sm:p-2.5">
                       <div className="flex items-center gap-2">
                         {position.team.crest && (
-                          <div className="relative w-6 h-6 flex-shrink-0">
+                          <div className="relative w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0">
                             <Image
                               src={position.team.crest}
                               alt={position.team.name}
                               fill
-                              sizes="24px"
+                              sizes="(max-width: 640px) 20px, 24px"
                               className="object-contain"
                             />
                           </div>
                         )}
-                        <span className="font-medium text-sm sm:text-base truncate max-w-[120px] sm:max-w-full">
+                        <span className="font-medium text-sm sm:text-base truncate max-w-[100px] sm:max-w-full">
                           {position.team.shortName || position.team.name}
                         </span>
                       </div>
                     </td>
-                    <td className="p-2 sm:p-3 text-center">
+                    <td className="p-1.5 sm:p-2.5 text-center">
                       {position.playedGames}
                     </td>
-                    <td className="p-2 sm:p-3 text-center">{position.won}</td>
-                    <td className="p-2 sm:p-3 text-center">{position.draw}</td>
-                    <td className="p-2 sm:p-3 text-center">{position.lost}</td>
-                    <td className="p-2 sm:p-3 text-center">
-                      {position.goalsFor}
+                    <td className="p-1.5 sm:p-2.5 text-center">
+                      {position.won}
                     </td>
-                    <td className="p-2 sm:p-3 text-center">
-                      {position.goalsAgainst}
+                    <td className="p-1.5 sm:p-2.5 text-center">
+                      {position.draw}
                     </td>
-                    <td className="p-2 sm:p-3 text-center">
+                    <td className="p-1.5 sm:p-2.5 text-center">
+                      {position.lost}
+                    </td>
+                    <td className="p-1.5 sm:p-2.5 text-center">
                       {position.goalDifference}
                     </td>
-                    <td className="p-2 sm:p-3 text-center font-bold">
+                    <td className="p-1.5 sm:p-2.5 text-center font-bold">
                       {position.points}
                     </td>
                   </tr>

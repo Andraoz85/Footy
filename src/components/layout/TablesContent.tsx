@@ -64,9 +64,12 @@ export default function TablesContent() {
     <main className="flex-1 bg-green-800 shadow rounded-lg flex flex-col">
       <div className="px-2 py-3 sm:px-4 sm:py-5 flex flex-col h-full">
         <h2 className="text-lg sm:text-xl font-semibold text-white mb-2 sm:mb-4">
-          {selectedLeague ? LEAGUES[selectedLeague].name : "All Tables"}
+          {selectedLeague ? LEAGUES[selectedLeague].name : "Premier League"}
         </h2>
-        <div className="flex-1 border-2 border-gray-200 rounded-lg p-2 sm:p-4 bg-white/5 min-h-[600px] max-h-[600px] overflow-y-auto">
+        <div
+          className="flex-1 rounded-lg p-2 sm:p-4 overflow-y-auto"
+          style={{ maxHeight: "calc(100vh - 250px)" }}
+        >
           {error ? (
             <div className="bg-white/80 p-4 rounded-lg">
               <p className="text-red-600 font-semibold mb-2">
