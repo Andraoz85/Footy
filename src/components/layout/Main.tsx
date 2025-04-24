@@ -80,7 +80,10 @@ export default function Main() {
         <h2 className="text-lg sm:text-xl font-semibold text-white mb-2 sm:mb-4">
           {selectedLeague ? LEAGUES[selectedLeague].name : "All Fixtures"}
         </h2>
-        <div className="flex-1 border-2 border-gray-200 rounded-lg p-2 sm:p-4 bg-white/5 min-h-[600px] max-h-[600px] overflow-y-auto">
+        <div
+          className="flex-1 rounded-lg p-2 sm:p-4 overflow-y-auto"
+          style={{ maxHeight: "calc(100vh - 250px)" }}
+        >
           {showEmptyState ? (
             <div className="bg-white/80 p-4 rounded-lg text-gray-800">
               <p className="text-red-600 font-semibold mb-2">
