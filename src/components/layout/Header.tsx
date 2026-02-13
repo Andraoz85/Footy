@@ -10,7 +10,10 @@ export default function Header() {
       <div className="mx-auto max-w-7xl px-3 sm:px-5 lg:px-6">
         <div className="py-2 md:py-0">
           <div className="flex flex-col gap-2 md:h-20 md:flex-row md:items-center md:gap-4">
-            <Link className="relative z-10 mx-auto flex-shrink-0 md:mx-0" href="/">
+            <Link
+              className="relative z-10 mx-auto flex-shrink-0 md:mx-0"
+              href="/"
+            >
               <Image
                 src="/footylogo.png"
                 alt="Footy"
