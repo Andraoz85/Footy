@@ -47,10 +47,64 @@ function computeAgeFromBirthDate(dateOfBirth: string | null): number | null {
 function normalizeTeamName(value: string): string {
   return value
     .toLowerCase()
+    .normalize("NFKD")
+    .replace(/\p{Diacritic}/gu, "")
     .replace(/\b(fc|cf|sc|afc|ac)\b/g, "")
     .replace(/[^\w\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function buildNameVariants(value: string): string[] {
+  const normalized = normalizeTeamName(value);
+  if (!normalized) return [];
+
+  const variants = new Set<string>([normalized]);
+  const aliasReplacements: Array<[RegExp, string]> = [
+    [/\binternazionale\b/g, "inter"],
+    [/\binter milan\b/g, "inter"],
+    [/\binter milano\b/g, "inter"],
+    [/\bparis saint germain\b/g, "psg"],
+    [/\bbayern munchen\b/g, "bayern munich"],
+  ];
+
+  for (const [pattern, replacement] of aliasReplacements) {
+    if (pattern.test(normalized)) {
+      variants.add(normalized.replace(pattern, replacement).replace(/\s+/g, " ").trim());
+    }
+  }
+
+  return Array.from(variants);
+}
+
+function scoreTeamNameMatch(queryName: string, candidateName: string): number {
+  const queryVariants = buildNameVariants(queryName);
+  const candidateVariants = buildNameVariants(candidateName);
+  if (!queryVariants.length || !candidateVariants.length) return 0;
+
+  let best = 0;
+  for (const query of queryVariants) {
+    const queryTokens = query.split(" ").filter(Boolean);
+    for (const candidate of candidateVariants) {
+      if (candidate === query) {
+        best = Math.max(best, 120);
+        continue;
+      }
+      if (candidate.startsWith(query) || query.startsWith(candidate)) {
+        best = Math.max(best, 90);
+      } else if (candidate.includes(query) || query.includes(candidate)) {
+        best = Math.max(best, 70);
+      }
+
+      const candidateTokens = candidate.split(" ").filter(Boolean);
+      const overlap = queryTokens.filter((token) => candidateTokens.includes(token)).length;
+      if (overlap > 0) {
+        best = Math.max(best, overlap * 20);
+      }
+    }
+  }
+
+  return best;
 }
 
 function getLikelyCurrentSeasonStartYear(date = new Date()): number {
@@ -71,15 +125,18 @@ async function resolveTeamFromLeague(
   const clubs = await club.list(competitionId, season.toString());
   if (!clubs.length) return null;
 
-  const normalizedQuery = normalizeTeamName(teamName);
-  const exact = clubs.find(
-    (entry) => normalizeTeamName(entry.title || "") === normalizedQuery
-  );
-  const partial = clubs.find((entry) => {
-    const normalized = normalizeTeamName(entry.title || "");
-    return normalized.includes(normalizedQuery) || normalizedQuery.includes(normalized);
-  });
-  const resolved = exact || partial || null;
+  let resolved: (typeof clubs)[number] | null = null;
+  let bestScore = 0;
+  for (const entry of clubs) {
+    const score = scoreTeamNameMatch(teamName, entry.title || "");
+    if (score > bestScore) {
+      bestScore = score;
+      resolved = entry;
+    }
+  }
+  if (bestScore < 20) {
+    resolved = null;
+  }
   if (!resolved?.id || !resolved.title) return null;
 
   return {
@@ -90,7 +147,10 @@ async function resolveTeamFromLeague(
   };
 }
 
-async function resolveTeamFromSearch(teamName: string): Promise<ResolvedTeam | null> {
+async function resolveTeamFromSearch(
+  teamName: string,
+  countryHint?: string | null
+): Promise<ResolvedTeam | null> {
   const searchUrl = `https://www.transfermarkt.com/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(
     teamName
   )}`;
@@ -116,6 +176,7 @@ async function resolveTeamFromSearch(teamName: string): Promise<ResolvedTeam | n
     const match = href.match(/\/verein\/(\d+)/);
     const id = match ? Number(match[1]) : NaN;
     const name = $(element).attr("title") || $(element).text().trim();
+    const rowText = sanitizeText($(element).closest("tr").text());
 
     if (!Number.isFinite(id) || !name || seen.has(id)) return;
     seen.add(id);
@@ -123,22 +184,28 @@ async function resolveTeamFromSearch(teamName: string): Promise<ResolvedTeam | n
       id,
       name,
       logo: null,
-      country: null,
+      country: rowText || null,
     });
   });
 
   if (!candidates.length) return null;
 
-  const normalizedQuery = normalizeTeamName(teamName);
-  const exact = candidates.find(
-    (entry) => normalizeTeamName(entry.name) === normalizedQuery
-  );
-  const partial = candidates.find((entry) => {
-    const normalized = normalizeTeamName(entry.name);
-    return normalized.includes(normalizedQuery) || normalizedQuery.includes(normalized);
-  });
+  const normalizedCountry = countryHint ? normalizeTeamName(countryHint) : "";
+  const ranked = candidates
+    .map((entry) => {
+      let score = scoreTeamNameMatch(teamName, entry.name);
+      if (normalizedCountry && entry.country) {
+        const normalizedEntryCountry = normalizeTeamName(entry.country);
+        if (normalizedEntryCountry.includes(normalizedCountry)) {
+          score += 40;
+        }
+      }
+      return { entry, score };
+    })
+    .sort((a, b) => b.score - a.score);
 
-  return exact || partial || candidates[0];
+  if (!ranked.length || ranked[0].score <= 0) return null;
+  return ranked[0].entry;
 }
 
 async function scrapeTransfers(teamId: number, season: number, teamName: string) {
@@ -282,6 +349,7 @@ async function scrapeTransfers(teamId: number, season: number, teamName: string)
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const teamName = searchParams.get("teamName");
+  const country = searchParams.get("country");
   const league = searchParams.get("league");
   const seasonParam = Number(searchParams.get("season"));
 
@@ -301,7 +369,7 @@ export async function GET(request: Request) {
   try {
     const resolvedTeam =
       (await resolveTeamFromLeague(teamName, leagueId, season)) ||
-      (await resolveTeamFromSearch(teamName));
+      (await resolveTeamFromSearch(teamName, country));
 
     if (!resolvedTeam) {
       return NextResponse.json(
