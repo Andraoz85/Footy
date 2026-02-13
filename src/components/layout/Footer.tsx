@@ -1,11 +1,9 @@
 export default function Footer() {
-    return (
-        <footer className="bg-white shadow mt-auto">
-            <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-                <p className="text-center text-gray-500 text-sm">
-                    &copy; {new Date().getFullYear()} Footy - Fotbollsstatistik
-                </p>
-            </div>
-        </footer>
-    )
+  return (
+    <footer className="mt-auto border-t border-zinc-800 bg-[#0b111b]">
+      <div className="mx-auto max-w-7xl px-3 py-4 text-center text-sm text-zinc-400 sm:px-5 lg:px-6">
+        &copy; {new Date().getFullYear()} Footy
+      </div>
+    </footer>
+  );
 }

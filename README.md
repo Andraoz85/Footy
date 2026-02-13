@@ -1,4 +1,4 @@
-<img src="/public/footylogo.png" width="100" height="100">
+<img src="/footylogo.png" width="100" height="100">
 https://footy-umber.vercel.app/
 
 Footy is a web application for displaying upcoming football matches and standings from various European leagues. The app uses the Football Data API to fetch the latest match data and presents it in a user-friendly interface.
@@ -22,7 +22,7 @@ Footy is a web application for displaying upcoming football matches and standing
 ### Prerequisites
 
 - Node.js (version 18 or later)
-- pnpm (recommended package manager) or npm/yarn
+- npm, pnpm, or yarn
 - API key from Football Data API (https://www.football-data.org/client/register)
 
 ### Installation
@@ -36,7 +36,7 @@ Footy is a web application for displaying upcoming football matches and standing
 2. Install dependencies:
 
    ```bash
-   pnpm install
+   npm install
    ```
 
 3. Create a `.env.local` file in the project root and add your API key:
@@ -48,7 +48,7 @@ Footy is a web application for displaying upcoming football matches and standing
 4. Start the development server:
 
    ```bash
-   pnpm dev
+   npm run dev
    ```
 
 5. Open [http://localhost:3000](http://localhost:3000) in your browser to see the result.

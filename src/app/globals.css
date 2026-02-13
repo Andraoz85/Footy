@@ -47,11 +47,14 @@ html,
 body {
   height: 100%;
   min-height: 100%;
+  background: #070b12;
 }
 
 body {
   display: flex;
   flex-direction: column;
+  background: #070b12;
+  color: #f4f4f5;
 }
 
 :root {

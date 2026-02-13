@@ -7,4 +7,8 @@ export const NAVIGATION = [
     name: "Tables",
     href: "/tables",
   },
+  {
+    name: "Stats",
+    href: "/stats",
+  },
 ] as const;
