@@ -1,10 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Match } from "@/lib/api/types";
-import { getUpcomingMatches } from "@/lib/api/football";
+import { DAYS_TO_FETCH, getUpcomingMatches } from "@/lib/api/football";
 import { LeagueId, LEAGUES } from "@/lib/api/leagues";
 import FixturesList from "@/components/FixturesList";
-import { useLeague } from "@/lib/context/LeagueContext";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link";
 
 interface LeagueMatches {
   leagueId: LeagueId;
@@ -16,12 +18,18 @@ export default function Main() {
   const [leagueMatches, setLeagueMatches] = useState<LeagueMatches[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { selectedLeague } = useLeague();
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    let isActive = true;
+
     async function fetchMatches() {
       try {
-        setIsLoading(true);
+        if (isActive) {
+          setIsLoading(true);
+          setError(null);
+        }
+
         const data = await getUpcomingMatches();
 
         const matchesByLeague: LeagueMatches[] = [];
@@ -36,88 +44,119 @@ export default function Main() {
           }
         });
 
+        if (!isActive) return;
+
         if (matchesByLeague.length === 0) {
+          setLeagueMatches([]);
           setError("No upcoming matches found");
         } else {
           setLeagueMatches(matchesByLeague);
           setError(null);
         }
       } catch (err) {
+        if (!isActive) return;
         console.error("Error fetching matches:", err);
+        setLeagueMatches([]);
         setError(err instanceof Error ? err.message : "Failed to load matches");
       } finally {
-        setIsLoading(false);
+        if (isActive) {
+          setIsLoading(false);
+        }
       }
     }
 
     fetchMatches();
-  }, []);
 
-  // Filter matches based on selected league
-  const filteredMatches = selectedLeague
-    ? leagueMatches.filter((league) => league.leagueId === selectedLeague)
-    : leagueMatches;
+    return () => {
+      isActive = false;
+    };
+  }, [reloadKey]);
+
+  const sortedMatches = useMemo(
+    () =>
+      [...leagueMatches].sort((a, b) =>
+        a.leagueName.localeCompare(b.leagueName)
+      ),
+    [leagueMatches]
+  );
 
   const showEmptyState =
     error !== null ||
-    (selectedLeague && filteredMatches.length === 0 && !isLoading) ||
-    (filteredMatches.length === 0 && !isLoading);
+    (sortedMatches.length === 0 && !isLoading);
 
   // Determine the message to show when no data is available
   const getEmptyStateMessage = () => {
     if (error) {
       return error;
-    } else if (selectedLeague) {
-      return `No upcoming matches found for ${LEAGUES[selectedLeague].name}.`;
     } else {
       return "No upcoming matches found for any league.";
     }
   };
 
   return (
-    <main className="flex-1 bg-green-800 shadow rounded-lg flex flex-col">
-      <div className="px-2 py-3 sm:px-4 sm:py-5 flex flex-col h-full">
-        <h2 className="text-lg sm:text-xl font-semibold text-white mb-2 sm:mb-4">
-          {selectedLeague ? LEAGUES[selectedLeague].name : "All Fixtures"}
+    <div className="flex h-full flex-col rounded-xl border border-zinc-800 bg-[#0b111b]">
+      <div className="flex h-full flex-col px-3 py-3 sm:px-4 sm:py-4">
+        <h2 className="mb-4 text-lg font-semibold text-zinc-100 sm:text-xl">
+          Next Fixtures
         </h2>
-        <div
-          className="flex-1 rounded-lg p-2 sm:p-4 overflow-y-auto"
-          style={{ maxHeight: "calc(100vh - 250px)" }}
-        >
-          {showEmptyState ? (
-            <div className="bg-white/80 p-4 rounded-lg text-gray-800">
-              <p className="text-red-600 font-semibold mb-2">
-                Data Unavailable
-              </p>
-              <p className="mb-3">{getEmptyStateMessage()}</p>
-              <div className="text-sm text-gray-600 mb-3">
-                This might be due to:
-                <ul className="list-disc ml-5 mt-1">
-                  <li>API rate limits reached</li>
-                  <li>No scheduled matches in the next 30 days</li>
-                  <li>Temporary server issues</li>
-                </ul>
-              </div>
+        <div className="flex-1 rounded-lg p-2 sm:p-3 lg:max-h-[calc(100dvh-250px)] lg:overflow-y-auto">
+          {isLoading ? (
+            <div className="space-y-3 sm:space-y-4">
+              <Skeleton className="h-16 bg-zinc-800 sm:h-20" />
+              <Skeleton className="h-16 bg-zinc-800 sm:h-20" />
+              <Skeleton className="h-16 bg-zinc-800 sm:h-20" />
             </div>
-          ) : (
-            <div className="space-y-6">
-              {filteredMatches.map((league) => (
-                <div key={league.leagueId}>
-                  {!selectedLeague && (
-                    <h3 className="text-white text-sm sm:text-base font-medium mb-2">
-                      {league.leagueName}
-                    </h3>
-                  )}
-                  <FixturesList
-                    matches={league.matches}
-                    isLoading={isLoading}
-                  />
+          ) : null}
+          {!isLoading &&
+            (showEmptyState ? (
+              <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 text-zinc-200">
+                <p className="mb-2 font-semibold text-red-300">
+                  Data Unavailable
+                </p>
+                <p className="mb-3">{getEmptyStateMessage()}</p>
+                <div className="mb-3 text-sm text-zinc-400">
+                  This might be due to:
+                  <ul className="list-disc ml-5 mt-1">
+                    <li>API rate limits reached</li>
+                    <li>
+                      No scheduled matches in the next {DAYS_TO_FETCH} days
+                    </li>
+                    <li>Temporary server issues</li>
+                  </ul>
                 </div>
-              ))}
-            </div>
-          )}
+                <Button
+                  onClick={() => setReloadKey((value) => value + 1)}
+                  variant="outline"
+                >
+                  Retry
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {sortedMatches.map((league) => (
+                  <div key={league.leagueId}>
+                    <div className="mb-2 flex items-center justify-between">
+                      <h3 className="text-sm font-medium text-zinc-100 sm:text-base">
+                        {league.leagueName}
+                      </h3>
+                      <Link
+                        href={`/competition/${league.leagueId}`}
+                        className="text-xs text-zinc-400 hover:text-zinc-100 sm:text-sm"
+                      >
+                        Open
+                      </Link>
+                    </div>
+                    <FixturesList
+                      matches={league.matches}
+                      isLoading={isLoading}
+                      leagueId={league.leagueId}
+                    />
+                  </div>
+                ))}
+              </div>
+            ))}
         </div>
       </div>
-    </main>
+    </div>
   );
 }
