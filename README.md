@@ -1,5 +1,3 @@
-<img src="/footylogo.png" width="100" height="100">
-
 # Footy
 
 Live app: https://footy-umber.vercel.app/
@@ -7,6 +5,7 @@ Live app: https://footy-umber.vercel.app/
 Footy is a football web app focused on the top European competitions, with dedicated pages for competitions, teams, and players.
 
 It currently uses a multi-source data approach:
+
 - ESPN endpoints for fixtures, results, standings, teams, and scoring tables
 - Transfermarkt scraping/parsing for extra team and player details
 - Football-data crest assets for competition/team branding
@@ -117,6 +116,7 @@ This project depends on third-party endpoints/pages that may change structure or
 ## Customization
 
 To add/remove competitions, update `src/lib/api/leagues.ts` and ensure related mapping fields stay aligned:
+
 - `id`
 - `espnLeagueCode`
 - `transfermarktCompetitionId`
