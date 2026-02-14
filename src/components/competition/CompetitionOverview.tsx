@@ -118,11 +118,11 @@ export default function CompetitionOverview({ leagueId }: CompetitionOverviewPro
         <LeagueTable standings={standings} isLoading={false} leagueId={leagueId} />
       </section>
       <section>
-        <h2 className="mb-2 text-base font-semibold text-zinc-100">Fixtures</h2>
+        <h2 className="mb-2 text-base font-semibold text-zinc-100">Upcoming Fixtures</h2>
         <CompetitionMatchList matches={fixtures.slice(0, 8)} leagueId={leagueId} mode="fixtures" />
       </section>
       <section>
-        <h2 className="mb-2 text-base font-semibold text-zinc-100">Results</h2>
+        <h2 className="mb-2 text-base font-semibold text-zinc-100">Latest Results</h2>
         <CompetitionMatchList matches={results.slice(0, 8)} leagueId={leagueId} mode="results" />
       </section>
       <section>

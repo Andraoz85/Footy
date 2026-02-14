@@ -17,9 +17,14 @@ export function toEspnDate(date: string | Date): string {
   return `${year}${month}${day}`;
 }
 
-export function mapEspnStatusToMatchStatus(event: { status?: { type?: { completed?: boolean; state?: string } } }): Match["status"] {
-  if (event.status?.type?.completed) return "FINISHED";
-  if (event.status?.type?.state === "in") return "IN_PLAY";
+export function mapEspnStatusToMatchStatus(event: {
+  status?: { type?: { completed?: boolean; state?: string } };
+  competitions?: Array<{ status?: { type?: { completed?: boolean; state?: string } } }>;
+}): Match["status"] {
+  const statusType =
+    event.status?.type || event.competitions?.[0]?.status?.type;
+  if (statusType?.completed) return "FINISHED";
+  if (statusType?.state === "in") return "IN_PLAY";
   return "SCHEDULED";
 }
 
@@ -43,6 +48,26 @@ function parseEspnTeam(team: {
     tla: team.abbreviation || "",
     crest,
   };
+}
+
+function parseCompetitorScore(
+  score: unknown,
+  status: Match["status"]
+): number | null {
+  if (status !== "FINISHED") return null;
+  if (typeof score === "number" && Number.isFinite(score)) return score;
+  if (typeof score === "string") {
+    const parsed = Number(score);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  if (score && typeof score === "object") {
+    const value = Number(
+      (score as { value?: unknown; displayValue?: unknown }).value ??
+        (score as { displayValue?: unknown }).displayValue
+    );
+    return Number.isFinite(value) ? value : null;
+  }
+  return null;
 }
 
 export function buildCompetitionMeta(leagueId: LeagueId) {
@@ -82,6 +107,66 @@ export async function fetchLeagueScoreboard(
   return data.events || [];
 }
 
+function asEventArray(value: unknown): Array<Record<string, unknown>> {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is Record<string, unknown> => typeof entry === "object" && entry !== null)
+    : [];
+}
+
+export function extractEspnEvents(payload: unknown): Array<Record<string, unknown>> {
+  if (!payload || typeof payload !== "object") return [];
+  const root = payload as Record<string, unknown>;
+
+  const direct = asEventArray(root.events);
+  if (direct.length > 0) return direct;
+
+  const schedule =
+    root.schedule && typeof root.schedule === "object"
+      ? (root.schedule as Record<string, unknown>)
+      : null;
+  const scheduleEvents = schedule ? asEventArray(schedule.events) : [];
+  if (scheduleEvents.length > 0) return scheduleEvents;
+
+  const team = root.team && typeof root.team === "object" ? (root.team as Record<string, unknown>) : null;
+  const teamSchedule =
+    team?.schedule && typeof team.schedule === "object"
+      ? (team.schedule as Record<string, unknown>)
+      : null;
+  const teamScheduleEvents = teamSchedule ? asEventArray(teamSchedule.events) : [];
+  if (teamScheduleEvents.length > 0) return teamScheduleEvents;
+
+  const nextEvent = team ? asEventArray(team.nextEvent) : [];
+  if (nextEvent.length > 0) return nextEvent;
+
+  const content =
+    root.content && typeof root.content === "object"
+      ? (root.content as Record<string, unknown>)
+      : null;
+  const contentSchedule =
+    content?.schedule && typeof content.schedule === "object"
+      ? (content.schedule as Record<string, unknown>)
+      : null;
+  const contentScheduleEvents = contentSchedule ? asEventArray(contentSchedule.events) : [];
+  if (contentScheduleEvents.length > 0) return contentScheduleEvents;
+
+  return [];
+}
+
+export async function fetchTeamScheduleEvents(
+  teamId: number,
+  dateFrom: string,
+  dateTo: string,
+  leagueCode?: string
+): Promise<Array<Record<string, unknown>>> {
+  const from = toEspnDate(dateFrom);
+  const to = toEspnDate(dateTo);
+  const prefix = leagueCode ? `${ESPN_API_BASE}/${leagueCode}` : ESPN_API_BASE;
+  const data = await fetchEspnJson<Record<string, unknown>>(
+    `${prefix}/teams/${teamId}/schedule?dates=${from}-${to}`
+  );
+  return extractEspnEvents(data);
+}
+
 export function mapScoreboardEventToMatch(event: Record<string, unknown>): Match | null {
   const competition = Array.isArray(event.competitions)
     ? (event.competitions[0] as Record<string, unknown> | undefined)
@@ -103,9 +188,28 @@ export function mapScoreboardEventToMatch(event: Record<string, unknown>): Match
   const awayTeam = parseEspnTeam((away.team || {}) as Record<string, unknown>);
 
   const id = Number(event.id || 0);
-  const homeScore = Number(home.score || 0);
-  const awayScore = Number(away.score || 0);
   const status = mapEspnStatusToMatchStatus(event as never);
+  const homeScore = parseCompetitorScore(home.score, status);
+  const awayScore = parseCompetitorScore(away.score, status);
+  const competitionMeta =
+    competition?.competition && typeof competition.competition === "object"
+      ? (competition.competition as Record<string, unknown>)
+      : null;
+  const eventLeague =
+    event.league && typeof event.league === "object"
+      ? (event.league as Record<string, unknown>)
+      : null;
+  const competitionName =
+    (competitionMeta?.name as string | undefined) ||
+    (competitionMeta?.displayName as string | undefined) ||
+    (eventLeague?.name as string | undefined) ||
+    (competition?.name as string | undefined) ||
+    null;
+  const competitionCode =
+    (competitionMeta?.abbreviation as string | undefined) ||
+    (competitionMeta?.slug as string | undefined) ||
+    (eventLeague?.abbreviation as string | undefined) ||
+    null;
 
   return {
     id: Number.isFinite(id) ? id : 0,
@@ -115,12 +219,18 @@ export function mapScoreboardEventToMatch(event: Record<string, unknown>): Match
     stage:
       ((event.seasonType as { name?: string } | undefined)?.name as string | undefined) ||
       "Regular Season",
+    competition: competitionName
+      ? {
+          name: competitionName,
+          code: competitionCode,
+        }
+      : undefined,
     homeTeam,
     awayTeam,
     score: {
       fullTime: {
-        home: status === "FINISHED" ? homeScore : null,
-        away: status === "FINISHED" ? awayScore : null,
+        home: homeScore,
+        away: awayScore,
       },
     },
   };

@@ -25,6 +25,10 @@ export interface Match {
   status: string;
   matchday: number;
   stage: string;
+  competition?: {
+    name: string;
+    code?: string | null;
+  };
   homeTeam: Team;
   awayTeam: Team;
   score: {

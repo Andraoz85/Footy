@@ -32,6 +32,22 @@ function statValue(stats: EspnStandingStat[] | undefined, key: string): number {
   return Number.isFinite(value) ? value : 0;
 }
 
+function toIsoDateString(date: Date): string {
+  return date.toISOString().split("T")[0];
+}
+
+function addDays(date: Date, days: number): Date {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function clampDate(date: Date, minDate: Date, maxDate: Date): Date {
+  if (date.getTime() < minDate.getTime()) return new Date(minDate);
+  if (date.getTime() > maxDate.getTime()) return new Date(maxDate);
+  return date;
+}
+
 function deriveFormByTeam(matches: Match[]) {
   const byTeam = new Map<number, Match[]>();
   for (const match of matches) {
@@ -86,7 +102,7 @@ export async function GET(request: Request) {
 
   const leagueId = league as LeagueId;
   const espnLeagueCode = LEAGUES[leagueId].espnLeagueCode;
-  const cacheKey = `standings:v2:${leagueId}`;
+  const cacheKey = `standings:v3:${leagueId}`;
 
   const freshCached = getFreshCache<StandingsResponse>(cacheKey);
   if (freshCached) {
@@ -100,16 +116,56 @@ export async function GET(request: Request) {
 
     const entries = data.children?.[0]?.standings?.entries || [];
     const now = new Date();
-    const since = new Date(now);
-    since.setDate(since.getDate() - 180);
-    const recentEvents = await fetchLeagueScoreboard(
-      leagueId,
-      since.toISOString().split("T")[0],
-      now.toISOString().split("T")[0]
+    const since = addDays(now, -180);
+    const trackedTeamIds = new Set<number>(
+      entries
+        .map((entry) => Number(entry.team?.id || 0))
+        .filter((id) => Number.isFinite(id) && id > 0)
     );
-    const finishedMatches = recentEvents
-      .map((event) => mapScoreboardEventToMatch(event))
-      .filter((match): match is Match => match !== null && match.status === "FINISHED");
+    const formCounts = new Map<number, number>();
+    const finishedMatches: Match[] = [];
+    const seenMatchIds = new Set<number>();
+    const chunkDays = 14;
+    let chunkEnd = new Date(now);
+
+    while (chunkEnd.getTime() >= since.getTime()) {
+      const chunkStart = clampDate(
+        addDays(chunkEnd, -(chunkDays - 1)),
+        since,
+        now
+      );
+      const chunkEvents = await fetchLeagueScoreboard(
+        leagueId,
+        toIsoDateString(chunkStart),
+        toIsoDateString(chunkEnd)
+      );
+      const mappedChunk = chunkEvents
+        .map((event) => mapScoreboardEventToMatch(event))
+        .filter((match): match is Match => match !== null && match.status === "FINISHED");
+
+      for (const match of mappedChunk) {
+        if (seenMatchIds.has(match.id)) continue;
+        seenMatchIds.add(match.id);
+        finishedMatches.push(match);
+
+        if (trackedTeamIds.has(match.homeTeam.id)) {
+          formCounts.set(match.homeTeam.id, (formCounts.get(match.homeTeam.id) || 0) + 1);
+        }
+        if (trackedTeamIds.has(match.awayTeam.id)) {
+          formCounts.set(match.awayTeam.id, (formCounts.get(match.awayTeam.id) || 0) + 1);
+        }
+      }
+
+      const allTeamsCovered = Array.from(trackedTeamIds).every(
+        (teamId) => (formCounts.get(teamId) || 0) >= 5
+      );
+      if (allTeamsCovered) {
+        break;
+      }
+
+      chunkEnd = addDays(chunkStart, -1);
+    }
+
     const formByTeam = deriveFormByTeam(finishedMatches);
 
     const table: TablePosition[] = entries.map((entry) => {
