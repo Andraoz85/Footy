@@ -24,17 +24,25 @@ export default function CompetitionMatchList({
   leagueId,
   mode,
 }: CompetitionMatchListProps) {
-  if (matches.length === 0) {
+  const sortedMatches = [...matches].sort((a, b) =>
+    mode === "results"
+      ? new Date(b.utcDate).getTime() - new Date(a.utcDate).getTime()
+      : new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime()
+  );
+
+  if (sortedMatches.length === 0) {
     return (
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/30 p-4 text-sm text-zinc-400">
-        No {mode} available.
+        {mode === "results"
+          ? "No recent results available."
+          : "No upcoming fixtures available."}
       </div>
     );
   }
 
   return (
     <div className="space-y-2.5">
-      {matches.map((match) => {
+      {sortedMatches.map((match) => {
         const matchDate = new Date(match.utcDate);
         return (
           <div

@@ -39,7 +39,10 @@ export default function Main() {
             matchesByLeague.push({
               leagueId: leagueId as LeagueId,
               leagueName: LEAGUES[leagueId as LeagueId].name,
-              matches: response.matches,
+              matches: [...response.matches].sort(
+                (a, b) =>
+                  new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime()
+              ),
             });
           }
         });
@@ -97,7 +100,7 @@ export default function Main() {
     <div className="flex h-full flex-col rounded-xl border border-zinc-800 bg-[#0b111b]">
       <div className="flex h-full flex-col px-3 py-3 sm:px-4 sm:py-4">
         <h2 className="mb-4 text-lg font-semibold text-zinc-100 sm:text-xl">
-          Next Fixtures
+          Upcoming Fixtures
         </h2>
         <div className="flex-1 rounded-lg p-2 sm:p-3 lg:max-h-[calc(100dvh-250px)] lg:overflow-y-auto">
           {isLoading ? (

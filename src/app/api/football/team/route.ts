@@ -5,10 +5,35 @@ import { LeagueId, LEAGUES } from "@/lib/api/leagues";
 import {
   fetchEspnJson,
   fetchLeagueScoreboard,
+  fetchTeamScheduleEvents,
   mapScoreboardEventToMatch,
+  toEspnDate,
 } from "@/lib/server/espn";
 import { Match, TeamDetailsResponse, TeamMatchesResponse } from "@/lib/api/types";
 import { getFreshCache, getStaleCache, setCache } from "@/lib/server/route-cache";
+const EXTRA_TEAM_SCHEDULE_CODES: readonly string[] = [
+  "eng.fa",
+  "eng.league_cup",
+  "ita.coppa_italia",
+  "esp.copa_del_rey",
+  "ger.dfb_pokal",
+  "fra.coupe_de_france",
+  "uefa.europa",
+  "uefa.europa.conf",
+  "club.friendly",
+];
+
+const EXTRA_COMPETITION_LABELS: Record<string, string> = {
+  "eng.fa": "English FA Cup",
+  "eng.league_cup": "English Carabao Cup",
+  "ita.coppa_italia": "Coppa Italia",
+  "esp.copa_del_rey": "Copa del Rey",
+  "ger.dfb_pokal": "DFB-Pokal",
+  "fra.coupe_de_france": "Coupe de France",
+  "uefa.europa": "UEFA Europa League",
+  "uefa.europa.conf": "UEFA Europa Conference League",
+  "club.friendly": "Club Friendly",
+};
 
 interface EspnRosterResponse {
   team?: {
@@ -140,6 +165,223 @@ function parseDate(value: string | null, fallback: Date): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return fallback.toISOString().split("T")[0];
   return parsed.toISOString().split("T")[0];
+}
+
+function toIsoDateString(date: Date): string {
+  return date.toISOString().split("T")[0];
+}
+
+function addDays(date: Date, days: number): Date {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function clampDate(date: Date, minDate: Date, maxDate: Date): Date {
+  if (date.getTime() < minDate.getTime()) return new Date(minDate);
+  if (date.getTime() > maxDate.getTime()) return new Date(maxDate);
+  return date;
+}
+
+function isWithinDateRange(utcDate: string, dateFrom: string, dateTo: string): boolean {
+  const matchDate = new Date(utcDate).getTime();
+  const from = new Date(`${dateFrom}T00:00:00.000Z`).getTime();
+  const to = new Date(`${dateTo}T23:59:59.999Z`).getTime();
+  if (Number.isNaN(matchDate) || Number.isNaN(from) || Number.isNaN(to)) {
+    return false;
+  }
+  return matchDate >= from && matchDate <= to;
+}
+
+function leagueCodeFromRef(ref: string | undefined): string | null {
+  if (!ref) return null;
+  const decodedRef = decodeURIComponent(ref);
+  const directMatch = decodedRef.match(/\/leagues\/([^/?]+)/i);
+  if (directMatch?.[1]) return directMatch[1];
+  const queryMatch = decodedRef.match(/[?&](?:league|group)=([^&]+)/i);
+  return queryMatch?.[1] || null;
+}
+
+function resolveCompetitionName(leagueCode: string | null, fallback: string): string {
+  if (!leagueCode) return fallback;
+  const knownLeague = Object.values(LEAGUES).find(
+    (league) => league.espnLeagueCode === leagueCode
+  );
+  if (knownLeague) return knownLeague.name;
+  return EXTRA_COMPETITION_LABELS[leagueCode] || fallback;
+}
+
+function toTitleCaseWords(value: string): string {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function humanizeLeagueCode(code: string): string {
+  return toTitleCaseWords(code.replace(/[._-]+/g, " "));
+}
+
+interface EspnCoreTeamEventsResponse {
+  items?: Array<{ $ref?: string }>;
+}
+
+interface EspnCoreEventCompetition {
+  $ref?: string;
+  name?: string;
+  displayName?: string;
+  competition?: {
+    $ref?: string;
+    name?: string;
+    displayName?: string;
+    abbreviation?: string;
+  };
+  competitors?: Array<{
+    id?: string;
+    homeAway?: "home" | "away";
+  }>;
+  status?: {
+    type?: {
+      completed?: boolean;
+      state?: string;
+    };
+  };
+}
+
+interface EspnCoreEvent {
+  id?: string;
+  date?: string;
+  name?: string;
+  league?: {
+    $ref?: string;
+    name?: string;
+    displayName?: string;
+    shortName?: string;
+    abbreviation?: string;
+  };
+  competitions?: EspnCoreEventCompetition[];
+}
+
+function resolveCoreCompetitionName(
+  event: EspnCoreEvent,
+  competition: EspnCoreEventCompetition | undefined,
+  leagueCode: string | null
+): string {
+  const explicitName =
+    event.league?.name ||
+    event.league?.displayName ||
+    event.league?.shortName ||
+    competition?.competition?.name ||
+    competition?.competition?.displayName ||
+    competition?.name ||
+    competition?.displayName;
+  if (explicitName && explicitName.trim()) return explicitName.trim();
+  if (leagueCode) {
+    return resolveCompetitionName(leagueCode, humanizeLeagueCode(leagueCode));
+  }
+  return "Unknown competition";
+}
+
+function parseTeamsFromCoreEventName(name: string | undefined) {
+  const raw = (name || "").trim();
+  const match = raw.match(/^(.*?)\s+at\s+(.*?)$/i);
+  if (!match) {
+    return {
+      awayName: "Away Team",
+      homeName: "Home Team",
+    };
+  }
+  return {
+    awayName: match[1].trim(),
+    homeName: match[2].trim(),
+  };
+}
+
+function mapCoreEventToMatch(event: EspnCoreEvent): Match | null {
+  const competition = event.competitions?.[0];
+  const competitors = competition?.competitors || [];
+  const home = competitors.find((entry) => entry.homeAway === "home");
+  const away = competitors.find((entry) => entry.homeAway === "away");
+  if (!home || !away) return null;
+
+  const id = Number(event.id || 0);
+  if (!Number.isFinite(id) || id <= 0) return null;
+  const utcDate = event.date || null;
+  if (!utcDate) return null;
+  const names = parseTeamsFromCoreEventName(event.name);
+  const statusType = competition?.status?.type;
+  const status: Match["status"] =
+    statusType?.completed
+      ? "FINISHED"
+      : statusType?.state === "in"
+        ? "IN_PLAY"
+        : "SCHEDULED";
+  const nestedCompetitionRef = competition?.competition?.$ref;
+  const leagueCode =
+    leagueCodeFromRef(event.league?.$ref) ||
+    leagueCodeFromRef(competition?.$ref) ||
+    leagueCodeFromRef(nestedCompetitionRef);
+
+  return {
+    id,
+    utcDate,
+    status,
+    matchday: 0,
+    stage: "Regular Season",
+    competition: {
+      name: resolveCoreCompetitionName(event, competition, leagueCode),
+      code: leagueCode || competition?.competition?.abbreviation || event.league?.abbreviation || null,
+    },
+    homeTeam: {
+      id: Number(home.id || 0),
+      name: names.homeName,
+      shortName: names.homeName,
+      tla: "",
+      crest: null,
+    },
+    awayTeam: {
+      id: Number(away.id || 0),
+      name: names.awayName,
+      shortName: names.awayName,
+      tla: "",
+      crest: null,
+    },
+    score: {
+      fullTime: {
+        home: null,
+        away: null,
+      },
+    },
+  };
+}
+
+async function fetchCoreTeamEvents(teamId: number, dateFrom: string, dateTo: string) {
+  const index = await fetchEspnJson<EspnCoreTeamEventsResponse>(
+    `https://sports.core.api.espn.com/v2/sports/soccer/teams/${teamId}/events?lang=en&region=us&limit=200&dates=${toEspnDate(
+      dateFrom
+    )}-${toEspnDate(dateTo)}`
+  ).catch(() => null);
+  const refs = (index?.items || [])
+    .map((item) => item.$ref)
+    .filter((ref): ref is string => Boolean(ref));
+  if (refs.length === 0) return [] as Match[];
+
+  const settled = await Promise.allSettled(
+    refs.map((ref) =>
+      fetchEspnJson<EspnCoreEvent>(ref)
+        .then(mapCoreEventToMatch)
+        .catch(() => null)
+    )
+  );
+
+  return settled
+    .filter(
+      (entry): entry is PromiseFulfilledResult<Match | null> =>
+        entry.status === "fulfilled"
+    )
+    .map((entry) => entry.value)
+    .filter((match): match is Match => match !== null);
 }
 
 function normalizeStatus(value: string | null): Match["status"] | "ALL" {
@@ -410,7 +652,7 @@ export async function GET(request: Request) {
   const cacheKey =
     resource === "details"
       ? `team:details:v7:${teamId}:${preferredLeague || "any"}`
-      : `team:matches:v3:${teamId}:${preferredLeague || "any"}:${status}:${
+      : `team:matches:v9:${teamId}:${preferredLeague || "any"}:${status}:${
           limit || "none"
         }:${dateFromRaw || "auto"}:${dateToRaw || "auto"}`;
 
@@ -513,15 +755,113 @@ export async function GET(request: Request) {
       : (Object.keys(LEAGUES) as LeagueId[]);
 
     const allMatches: Match[] = [];
-    for (const leagueId of leaguesToQuery) {
-      const events = await fetchLeagueScoreboard(leagueId, dateFrom, dateTo);
-      const leagueMatches = events
-        .map((event) => mapScoreboardEventToMatch(event))
-        .filter((item): item is Match => item !== null)
-        .filter(
-          (item) => item.homeTeam.id === teamId || item.awayTeam.id === teamId
+    const globalSeenIds = new Set<number>();
+    const pushMatches = (matches: Match[]) => {
+      for (const match of matches) {
+        if (!isWithinDateRange(match.utcDate, dateFrom, dateTo)) continue;
+        if (globalSeenIds.has(match.id)) continue;
+        globalSeenIds.add(match.id);
+        allMatches.push(match);
+      }
+    };
+
+    // Prefer team-centric schedule endpoints so team pages can include cups/friendlies.
+    const scheduleLeagueCodes = Array.from(
+      new Set(
+        [
+          preferredLeague ? LEAGUES[preferredLeague].espnLeagueCode : undefined,
+          ...Object.values(LEAGUES).map((entry) => entry.espnLeagueCode),
+          ...EXTRA_TEAM_SCHEDULE_CODES,
+        ].filter((value): value is string => typeof value === "string")
+      )
+    );
+    const scheduleCandidates: Array<string | undefined> = [
+      undefined, // global soccer team schedule endpoint
+      ...scheduleLeagueCodes,
+    ];
+
+    for (const leagueCode of scheduleCandidates) {
+      try {
+        const events = await fetchTeamScheduleEvents(
+          teamId,
+          dateFrom,
+          dateTo,
+          leagueCode
         );
-      allMatches.push(...leagueMatches);
+        const mapped = events
+          .map((event) => mapScoreboardEventToMatch(event))
+          .filter((item): item is Match => item !== null)
+          .filter(
+            (item) => item.homeTeam.id === teamId || item.awayTeam.id === teamId
+          );
+        pushMatches(mapped);
+
+        const maxNeeded = Number.isFinite(limit) && limit > 0 ? limit * 3 : 0;
+        if (maxNeeded > 0 && globalSeenIds.size >= maxNeeded) {
+          break;
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    if (status !== "FINISHED") {
+      const coreMatches = await fetchCoreTeamEvents(teamId, dateFrom, dateTo).catch(
+        () => [] as Match[]
+      );
+      pushMatches(coreMatches);
+    }
+
+    const hasFinishedFromSchedule = allMatches.some((match) => match.status === "FINISHED");
+    const shouldUseLeagueFallback =
+      allMatches.length === 0 || (status === "FINISHED" && !hasFinishedFromSchedule);
+
+    // Fallback to league scoreboards if team schedule endpoint returns no usable data.
+    if (shouldUseLeagueFallback) {
+    for (const leagueId of leaguesToQuery) {
+      const collectLeagueMatches = (events: Array<Record<string, unknown>>) => {
+        const mapped = events
+          .map((event) => mapScoreboardEventToMatch(event))
+          .filter((item): item is Match => item !== null)
+          .filter(
+            (item) => item.homeTeam.id === teamId || item.awayTeam.id === teamId
+          );
+        pushMatches(mapped);
+      };
+
+      if (status === "FINISHED") {
+        // ESPN scoreboard can omit newer matches for very large date windows.
+        // Fetch backwards in smaller chunks so latest results are reliably included.
+        const chunkDays = 14;
+        const fromBoundary = new Date(`${dateFrom}T00:00:00.000Z`);
+        const toBoundary = new Date(`${dateTo}T00:00:00.000Z`);
+        let chunkEnd = new Date(toBoundary);
+
+        while (chunkEnd.getTime() >= fromBoundary.getTime()) {
+          const chunkStart = clampDate(
+            addDays(chunkEnd, -(chunkDays - 1)),
+            fromBoundary,
+            toBoundary
+          );
+          const events = await fetchLeagueScoreboard(
+            leagueId,
+            toIsoDateString(chunkStart),
+            toIsoDateString(chunkEnd)
+          );
+          collectLeagueMatches(events);
+
+          const maxNeeded = Number.isFinite(limit) && limit > 0 ? limit * 3 : 0;
+          if (maxNeeded > 0 && allMatches.length >= maxNeeded) {
+            break;
+          }
+
+          chunkEnd = addDays(chunkStart, -1);
+        }
+      } else {
+        const events = await fetchLeagueScoreboard(leagueId, dateFrom, dateTo);
+        collectLeagueMatches(events);
+      }
+    }
     }
 
     let matches = allMatches;

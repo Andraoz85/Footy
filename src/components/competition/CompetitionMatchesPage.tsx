@@ -85,7 +85,9 @@ export default function CompetitionMatchesPage({
 
   return (
     <section>
-      <h2 className="mb-2 text-base font-semibold capitalize text-zinc-100">{mode}</h2>
+      <h2 className="mb-2 text-base font-semibold text-zinc-100">
+        {mode === "results" ? "Latest Results" : "Upcoming Fixtures"}
+      </h2>
       <CompetitionMatchList matches={matches} leagueId={leagueId} mode={mode} />
     </section>
   );

@@ -15,6 +15,22 @@ function parseDate(value: string | null, fallback: Date): string {
   return parsed.toISOString().split("T")[0];
 }
 
+function toIsoDateString(date: Date): string {
+  return date.toISOString().split("T")[0];
+}
+
+function addDays(date: Date, days: number): Date {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function clampDate(date: Date, minDate: Date, maxDate: Date): Date {
+  if (date.getTime() < minDate.getTime()) return new Date(minDate);
+  if (date.getTime() > maxDate.getTime()) return new Date(maxDate);
+  return date;
+}
+
 function normalizeStatus(value: string | null): Match["status"] | "ALL" {
   if (!value) return "ALL";
   const upper = value.toUpperCase();
@@ -73,7 +89,7 @@ export async function GET(request: Request) {
 
   const dateFrom = parseDate(endpointParams.get("dateFrom"), defaultFrom);
   const dateTo = parseDate(endpointParams.get("dateTo"), defaultTo);
-  const cacheKey = `fixtures:v2:${leagueId}:${status}:${dateFrom}:${dateTo}:${limit || "none"}`;
+  const cacheKey = `fixtures:v3:${leagueId}:${status}:${dateFrom}:${dateTo}:${limit || "none"}`;
 
   const freshCached = getFreshCache<Record<string, unknown>>(cacheKey);
   if (freshCached) {
@@ -81,10 +97,49 @@ export async function GET(request: Request) {
   }
 
   try {
-    const events = await fetchLeagueScoreboard(leagueId, dateFrom, dateTo);
-    let matches = events
-      .map((event) => mapScoreboardEventToMatch(event))
-      .filter((item): item is Match => item !== null);
+    let matches: Match[] = [];
+
+    if (status === "FINISHED") {
+      const seenIds = new Set<number>();
+      const chunkDays = 14;
+      const fromBoundary = new Date(`${dateFrom}T00:00:00.000Z`);
+      const toBoundary = new Date(`${dateTo}T00:00:00.000Z`);
+      let chunkEnd = new Date(toBoundary);
+
+      while (chunkEnd.getTime() >= fromBoundary.getTime()) {
+        const chunkStart = clampDate(
+          addDays(chunkEnd, -(chunkDays - 1)),
+          fromBoundary,
+          toBoundary
+        );
+        const chunkEvents = await fetchLeagueScoreboard(
+          leagueId,
+          toIsoDateString(chunkStart),
+          toIsoDateString(chunkEnd)
+        );
+        const mapped = chunkEvents
+          .map((event) => mapScoreboardEventToMatch(event))
+          .filter((item): item is Match => item !== null);
+
+        for (const match of mapped) {
+          if (seenIds.has(match.id)) continue;
+          seenIds.add(match.id);
+          matches.push(match);
+        }
+
+        const maxNeeded = Number.isFinite(limit) && limit > 0 ? limit * 2 : 0;
+        if (maxNeeded > 0 && seenIds.size >= maxNeeded) {
+          break;
+        }
+
+        chunkEnd = addDays(chunkStart, -1);
+      }
+    } else {
+      const events = await fetchLeagueScoreboard(leagueId, dateFrom, dateTo);
+      matches = events
+        .map((event) => mapScoreboardEventToMatch(event))
+        .filter((item): item is Match => item !== null);
+    }
 
     if (status !== "ALL") {
       if (status === "TIMED") {

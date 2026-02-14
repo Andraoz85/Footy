@@ -187,6 +187,9 @@ function TeamMatchesTable({
                 </div>
                 <span className="text-xs text-zinc-400">{resolveVenueLabel(match, teamId)}</span>
               </div>
+              <div className="mt-1 text-xs text-zinc-500">
+                {match.competition?.name || match.stage || "Unknown competition"}
+              </div>
               <Link
                 href={`/team/${opponent.id}${leagueId ? `?league=${leagueId}` : ""}`}
                 className="mt-1 inline-flex items-center gap-2 font-medium text-zinc-100 hover:underline"
@@ -236,6 +239,7 @@ function TeamMatchesTable({
             <th className="p-2.5 w-36">Date</th>
             <th className="p-2.5 w-20">Venue</th>
             <th className="p-2.5">Opponent</th>
+            <th className="p-2.5 w-48">Competition</th>
             <th className="p-2.5 w-20 text-center">Status</th>
             <th className="p-2.5 w-20 text-center">{showScore ? "Score" : "Kickoff"}</th>
           </tr>
@@ -272,6 +276,9 @@ function TeamMatchesTable({
                     ) : null}
                     <span>{opponent.shortName || opponent.name}</span>
                   </Link>
+                </td>
+                <td className="p-2.5 text-zinc-300">
+                  {match.competition?.name || match.stage || "-"}
                 </td>
                 <td className="p-2.5 text-center">
                   {showScore ? (
@@ -459,13 +466,11 @@ export default function TeamContent({
             getTeamMatches(teamId, {
               status: "FINISHED",
               limit: 10,
-              leagueId: leagueId || undefined,
             }),
             getTeamMatches(teamId, {
               dateFrom: today,
               dateTo,
               limit: 10,
-              leagueId: leagueId || undefined,
             }),
             leagueId
               ? getTeamStandingRow(leagueId, teamId, seasonStartYear)
@@ -745,7 +750,7 @@ export default function TeamContent({
               </div>
               <div>
                 <p className="text-xs uppercase text-zinc-500">Form</p>
-                {renderFormPills(teamRow.form || derivedRecentForm)}
+                {renderFormPills(derivedRecentForm || teamRow.form)}
               </div>
             </div>
           ) : null}
