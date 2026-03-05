@@ -2,20 +2,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Match } from "@/lib/api/types";
 import { DAYS_TO_FETCH, getUpcomingMatches } from "@/lib/api/football";
-import { LeagueId, LEAGUES } from "@/lib/api/leagues";
+import { LEAGUES, LeagueId } from "@/lib/api/leagues";
 import FixturesList from "@/components/FixturesList";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import Link from "next/link";
-
-interface LeagueMatches {
-  leagueId: LeagueId;
-  leagueName: string;
-  matches: Match[];
-}
 
 export default function Main() {
-  const [leagueMatches, setLeagueMatches] = useState<LeagueMatches[]>([]);
+  const [matches, setMatches] = useState<Match[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -31,35 +24,43 @@ export default function Main() {
         }
 
         const data = await getUpcomingMatches();
+        const allMatches = Object.entries(data)
+          .flatMap(([leagueId, response]) => {
+            if (!response?.matches?.length) return [];
 
-        const matchesByLeague: LeagueMatches[] = [];
+            const fallbackCompetitionName =
+              response.competition?.name ||
+              LEAGUES[leagueId as LeagueId]?.name ||
+              "Unknown competition";
 
-        Object.entries(data).forEach(([leagueId, response]) => {
-          if (response && response.matches.length > 0) {
-            matchesByLeague.push({
-              leagueId: leagueId as LeagueId,
-              leagueName: LEAGUES[leagueId as LeagueId].name,
-              matches: [...response.matches].sort(
-                (a, b) =>
-                  new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime()
-              ),
-            });
-          }
-        });
+            return response.matches.map((match) => ({
+              ...match,
+              competition:
+                match.competition?.name
+                  ? match.competition
+                  : {
+                      name: fallbackCompetitionName,
+                      code: leagueId,
+                    },
+            }));
+          })
+          .sort(
+            (a, b) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime()
+          );
 
         if (!isActive) return;
 
-        if (matchesByLeague.length === 0) {
-          setLeagueMatches([]);
+        if (allMatches.length === 0) {
+          setMatches([]);
           setError("No upcoming matches found");
         } else {
-          setLeagueMatches(matchesByLeague);
+          setMatches(allMatches);
           setError(null);
         }
       } catch (err) {
         if (!isActive) return;
         console.error("Error fetching matches:", err);
-        setLeagueMatches([]);
+        setMatches([]);
         setError(err instanceof Error ? err.message : "Failed to load matches");
       } finally {
         if (isActive) {
@@ -75,13 +76,43 @@ export default function Main() {
     };
   }, [reloadKey]);
 
-  const sortedMatches = useMemo(
-    () =>
-      [...leagueMatches].sort((a, b) =>
-        a.leagueName.localeCompare(b.leagueName)
-      ),
-    [leagueMatches]
-  );
+  const sortedMatches = useMemo(() => [...matches], [matches]);
+  const groupedMatches = useMemo(() => {
+    const dateKeyFormatter = new Intl.DateTimeFormat("sv-SE", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const dateLabelFormatter = new Intl.DateTimeFormat("sv-SE", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    const groups = new Map<
+      string,
+      { dateLabel: string; competition: string; matches: Match[] }
+    >();
+
+    for (const match of sortedMatches) {
+      const kickoff = new Date(match.utcDate);
+      const dateKey = dateKeyFormatter.format(kickoff);
+      const competition = match.competition?.name || "Okänd turnering";
+      const groupKey = `${dateKey}__${competition}`;
+
+      if (!groups.has(groupKey)) {
+        groups.set(groupKey, {
+          dateLabel: dateLabelFormatter.format(kickoff),
+          competition,
+          matches: [],
+        });
+      }
+
+      groups.get(groupKey)?.matches.push(match);
+    }
+
+    return Array.from(groups.values());
+  }, [sortedMatches]);
 
   const showEmptyState =
     error !== null ||
@@ -135,26 +166,25 @@ export default function Main() {
                 </Button>
               </div>
             ) : (
-              <div className="space-y-6">
-                {sortedMatches.map((league) => (
-                  <div key={league.leagueId}>
-                    <div className="mb-2 flex items-center justify-between">
-                      <h3 className="text-sm font-medium text-zinc-100 sm:text-base">
-                        {league.leagueName}
+              <div className="space-y-4">
+                {groupedMatches.map((group) => (
+                  <section
+                    key={`${group.dateLabel}-${group.competition}`}
+                    className="rounded-lg border border-zinc-800 bg-zinc-900/30 p-3"
+                  >
+                    <div className="mb-3 border-b border-zinc-800/70 pb-2">
+                      <p className="text-xs uppercase tracking-wide text-zinc-400">
+                        {group.dateLabel}
+                      </p>
+                      <h3 className="text-sm font-semibold text-zinc-100 sm:text-base">
+                        {group.competition}
                       </h3>
-                      <Link
-                        href={`/competition/${league.leagueId}`}
-                        className="text-xs text-zinc-400 hover:text-zinc-100 sm:text-sm"
-                      >
-                        Open
-                      </Link>
                     </div>
                     <FixturesList
-                      matches={league.matches}
+                      matches={group.matches}
                       isLoading={isLoading}
-                      leagueId={league.leagueId}
                     />
-                  </div>
+                  </section>
                 ))}
               </div>
             ))}

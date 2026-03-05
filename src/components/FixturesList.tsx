@@ -15,12 +15,14 @@ interface FixturesListProps {
   matches: Match[];
   isLoading: boolean;
   leagueId?: LeagueId;
+  showCompetition?: boolean;
 }
 
 export default function FixturesList({
   matches,
   isLoading,
   leagueId,
+  showCompetition = false,
 }: FixturesListProps) {
   if (isLoading) {
     return <Skeleton className="h-12 sm:h-16" />;
@@ -33,6 +35,12 @@ export default function FixturesList({
           key={match.id}
           className="rounded-lg border border-zinc-800 bg-zinc-900/35 p-3 transition-colors hover:bg-zinc-900/60 sm:p-4"
         >
+          {showCompetition ? (
+            <div className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-400">
+              {match.competition?.name || "Okänd turnering"}
+            </div>
+          ) : null}
+
           <div className="flex items-center justify-between gap-3 border-b border-zinc-800/70 pb-2 md:hidden">
             <div className="text-[11px] text-zinc-400">
               {matchDateFormatter.format(new Date(match.utcDate))}
